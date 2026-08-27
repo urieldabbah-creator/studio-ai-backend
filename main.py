@@ -4,7 +4,7 @@ import requests
 
 app = FastAPI()
 
-REPLICATE_API_TOKEN = "tu_api_key_de_replicate_aqui"
+REPLICATE_API_TOKEN = "r8_YkllQG7jfWj9oBeY63bOUbnmWROEN1L22Cbna"
 
 
 @app.get("/")
