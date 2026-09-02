@@ -31,16 +31,12 @@ def read_root():
     retry=retry_if_exception_type(ServerError)
 )
 def llamar_gemini(prompt, imagen_parte):
-    # Solicitamos explícitamente que la respuesta incluya la imagen modificada
     return client.models.generate_content(
         model='gemini-3.6-flash',
         contents=[
-            prompt + ". Modifica la imagen aportada de acuerdo a esta solicitud y devuelve la imagen visual resultante editada.",
+            prompt + ". Responde describiendo detalladamente cómo quedaría la imagen modificada.",
             imagen_parte
-        ],
-        config=types.GenerateContentConfig(
-            response_modalities=["IMAGE", "TEXT"]
-        )
+        ]
     )
 
 @app.post("/editar-con-ia-real/")
@@ -58,7 +54,7 @@ async def editar_con_ia(
         
         response = llamar_gemini(prompt, imagen_parte)
         
-        # Extraemos la imagen modificada de la respuesta del modelo
+        # Buscamos si hay datos de imagen en la respuesta
         imagen_salida_bytes = None
         if response.candidates and response.candidates[0].content.parts:
             for part in response.candidates[0].content.parts:
@@ -66,11 +62,15 @@ async def editar_con_ia(
                     imagen_salida_bytes = part.inline_data.data
                     break
         
-        # Si el modelo generó la imagen modificada, la devolvemos; si no, devolvemos la original
         if imagen_salida_bytes:
             return Response(content=imagen_salida_bytes, media_type="image/jpeg")
         else:
-            return Response(content=imagen_bytes, media_type="image/jpeg")
+            # Si no hay imagen, devolvemos el texto que generó la IA para entender qué respondió
+            texto_respuesta = response.text if response.text else "El modelo procesó la solicitud pero no generó contenido visual."
+            return JSONResponse(
+                status_code=200,
+                content={"respuesta_texto_ia": texto_respuesta}
+            )
 
     except Exception as e:
         error_detalles = traceback.format_exc()
