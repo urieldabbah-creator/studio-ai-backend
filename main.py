@@ -24,7 +24,6 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 def read_root():
     return {"status": "Backend de Studio AI activo"}
 
-# Reintenta automáticamente hasta 3 veces si el servidor da error 503 (alta demanda)
 @retry(
     reraise=True,
     stop=stop_after_attempt(3),
@@ -33,7 +32,7 @@ def read_root():
 )
 def llamar_gemini(prompt, imagen_parte):
     return client.models.generate_content(
-        model='gemini-3.6-flash',
+        model='gemini-1.5-pro',
         contents=[prompt, imagen_parte],
     )
 
@@ -50,7 +49,6 @@ async def editar_con_ia(
             mime_type=file.content_type or "image/jpeg"
         )
         
-        # Llamada protegida con reintentos automáticos
         response = llamar_gemini(prompt, imagen_parte)
         
         return Response(content=imagen_bytes, media_type="image/jpeg")
