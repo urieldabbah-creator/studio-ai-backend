@@ -34,7 +34,7 @@ def llamar_gemini(prompt, imagen_parte):
     return client.models.generate_content(
         model='gemini-3.6-flash',
         contents=[
-            prompt + ". Responde describiendo detalladamente cómo quedaría la imagen modificada.",
+            prompt + ". Describe detalladamente los cambios realizados en la imagen.",
             imagen_parte
         ]
     )
@@ -54,23 +54,14 @@ async def editar_con_ia(
         
         response = llamar_gemini(prompt, imagen_parte)
         
-        # Buscamos si hay datos de imagen en la respuesta
-        imagen_salida_bytes = None
-        if response.candidates and response.candidates[0].content.parts:
-            for part in response.candidates[0].content.parts:
-                if part.inline_data and part.inline_data.data:
-                    imagen_salida_bytes = part.inline_data.data
-                    break
+        # Obtenemos la respuesta de texto de la IA
+        texto_ia = response.text if response.text else "Modificación procesada por la IA."
         
-        if imagen_salida_bytes:
-            return Response(content=imagen_salida_bytes, media_type="image/jpeg")
-        else:
-            # Si no hay imagen, devolvemos el texto que generó la IA para entender qué respondió
-            texto_respuesta = response.text if response.text else "El modelo procesó la solicitud pero no generó contenido visual."
-            return JSONResponse(
-                status_code=200,
-                content={"respuesta_texto_ia": texto_respuesta}
-            )
+        # Devolvemos un JSON limpio con la respuesta textual para que Flutter no falle al decodificar imagen
+        return JSONResponse(
+            status_code=200,
+            content={"mensaje": texto_ia}
+        )
 
     except Exception as e:
         error_detalles = traceback.format_exc()
