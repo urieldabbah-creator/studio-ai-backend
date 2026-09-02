@@ -30,9 +30,9 @@ async def editar_con_ia(
     try:
         imagen_bytes = await file.read()
         
-        # Forma directa de enviar archivos multimedia a la SDK actual
+        # Usamos gemini-2.0-flash que es totalmente compatible con la SDK google-genai
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.0-flash',
             contents=[
                 prompt,
                 types.Part.from_bytes(
