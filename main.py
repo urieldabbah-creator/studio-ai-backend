@@ -35,15 +35,14 @@ async def editar_con_ia(
             mime_type=file.content_type or "image/jpeg"
         )
         
-        # Usamos el modelo estándar compatible con la SDK actual
+        # Usamos el modelo recomendado por la API en los logs
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=[prompt, imagen_parte],
         )
         
         return Response(content=imagen_bytes, media_type="image/jpeg")
 
     except Exception as e:
-        # Imprime el error completo en los logs de Render para depuración
         print("ERROR INTERNO:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
