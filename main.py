@@ -1,10 +1,20 @@
 import os
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
 
 app = FastAPI()
+
+# Configuramos CORS para permitir peticiones desde cualquier origen (incluyendo Flutter Web local)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
@@ -18,22 +28,18 @@ async def editar_con_ia(
     prompt: str = Form(...)
 ):
     try:
-        # 1. Leemos los bytes de la imagen enviada desde tu app de Flutter
         imagen_bytes = await file.read()
         
-        # 2. Creamos la parte de la imagen usando types.Part.from_bytes como exige el SDK
         imagen_parte = types.Part.from_bytes(
             data=imagen_bytes,
             mime_type=file.content_type or "image/jpeg"
         )
         
-        # 3. Enviamos la petición al modelo multimodal de Gemini
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt, imagen_parte],
         )
         
-        # 4. Devolvemos la imagen original para completar el ciclo con éxito 200 en esta fase de pruebas
         return Response(content=imagen_bytes, media_type="image/jpeg")
 
     except Exception as e:
