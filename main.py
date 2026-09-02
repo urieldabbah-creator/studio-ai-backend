@@ -32,7 +32,7 @@ def read_root():
 )
 def llamar_gemini(prompt, imagen_parte):
     return client.models.generate_content(
-        model='gemini-1.5-pro',
+        model='gemini-2.5-flash',
         contents=[prompt, imagen_parte],
     )
 
