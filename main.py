@@ -33,7 +33,10 @@ def read_root():
 def llamar_gemini(prompt, imagen_parte):
     return client.models.generate_content(
         model='gemini-3.6-flash',
-        contents=[prompt, imagen_parte],
+        contents=[
+            prompt + ". Modifica la imagen de entrada de acuerdo al prompt y devuelve la imagen resultante editada.",
+            imagen_parte
+        ],
     )
 
 @app.post("/editar-con-ia-real/")
@@ -51,7 +54,19 @@ async def editar_con_ia(
         
         response = llamar_gemini(prompt, imagen_parte)
         
-        return Response(content=imagen_bytes, media_type="image/jpeg")
+        # Buscamos la parte de imagen en la respuesta de la IA
+        imagen_salida_bytes = None
+        if response.candidates and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if part.inline_data and part.inline_data.data:
+                    imagen_salida_bytes = part.inline_data.data
+                    break
+        
+        # Si el modelo devolvió una imagen editada, la usamos; si devolvió texto, rebotamos a los bytes originales
+        if imagen_salida_bytes:
+            return Response(content=imagen_salida_bytes, media_type="image/jpeg")
+        else:
+            return Response(content=imagen_bytes, media_type="image/jpeg")
 
     except Exception as e:
         error_detalles = traceback.format_exc()
