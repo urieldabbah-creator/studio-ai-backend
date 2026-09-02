@@ -1,4 +1,5 @@
 import os
+import traceback
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +8,6 @@ from google.genai import types
 
 app = FastAPI()
 
-# Configuramos CORS para permitir peticiones desde cualquier origen (incluyendo Flutter Web local)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,6 +35,7 @@ async def editar_con_ia(
             mime_type=file.content_type or "image/jpeg"
         )
         
+        # Usamos el modelo estándar compatible con la SDK actual
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt, imagen_parte],
@@ -43,4 +44,6 @@ async def editar_con_ia(
         return Response(content=imagen_bytes, media_type="image/jpeg")
 
     except Exception as e:
+        # Imprime el error completo en los logs de Render para depuración
+        print("ERROR INTERNO:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
