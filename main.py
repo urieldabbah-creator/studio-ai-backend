@@ -30,9 +30,9 @@ async def editar_con_ia(
     try:
         imagen_bytes = await file.read()
         
-        # Usamos gemini-2.0-flash que es totalmente compatible con la SDK google-genai
+        # Usamos el modelo exigido por la API de Google
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-3.6-flash',
             contents=[
                 prompt,
                 types.Part.from_bytes(
