@@ -26,13 +26,13 @@ def read_root():
 
 @retry(
     reraise=True,
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=2, max=15),
     retry=retry_if_exception_type(ServerError)
 )
 def llamar_gemini(prompt, imagen_parte):
     return client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.6-flash',
         contents=[prompt, imagen_parte],
     )
 
