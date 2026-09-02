@@ -30,15 +30,16 @@ async def editar_con_ia(
     try:
         imagen_bytes = await file.read()
         
-        imagen_parte = types.Part.from_bytes(
-            data=imagen_bytes,
-            mime_type=file.content_type or "image/jpeg"
-        )
-        
-        # Usamos el modelo estable por excelencia
+        # Forma directa de enviar archivos multimedia a la SDK actual
         response = client.models.generate_content(
             model='gemini-1.5-flash',
-            contents=[prompt, imagen_parte],
+            contents=[
+                prompt,
+                types.Part.from_bytes(
+                    data=imagen_bytes,
+                    mime_type=file.content_type or "image/jpeg"
+                )
+            ]
         )
         
         return Response(content=imagen_bytes, media_type="image/jpeg")
@@ -48,5 +49,8 @@ async def editar_con_ia(
         print("ERROR INTERNO:", error_detalles)
         return JSONResponse(
             status_code=500,
-            content={"error": str(e), "detalles": error_detalles}
+            content={
+                "error_mensaje": str(e),
+                "traza_completa": error_detalles
+            }
         )
