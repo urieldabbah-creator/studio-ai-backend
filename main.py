@@ -1,7 +1,7 @@
 import os
 import traceback
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
@@ -35,14 +35,19 @@ async def editar_con_ia(
             mime_type=file.content_type or "image/jpeg"
         )
         
-        # Usamos gemini-1.5-flash por su alta estabilidad y disponibilidad
+        # Usamos gemini-2.5-flash que es el estándar oficial soportado
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-flash',
             contents=[prompt, imagen_parte],
         )
         
         return Response(content=imagen_bytes, media_type="image/jpeg")
 
     except Exception as e:
-        print("ERROR INTERNO:", traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        error_detalles = traceback.format_exc()
+        print("ERROR INTERNO:", error_detalles)
+        # Devolvemos el detalle exacto en el JSON para verlo directo en la app o consola
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "detalles": error_detalles}
+        )
