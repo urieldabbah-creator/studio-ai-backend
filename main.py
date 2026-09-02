@@ -35,9 +35,9 @@ async def editar_con_ia(
             mime_type=file.content_type or "image/jpeg"
         )
         
-        # Usamos gemini-2.5-flash que es el estándar oficial soportado
+        # Usamos el modelo requerido por la API
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=[prompt, imagen_parte],
         )
         
@@ -46,7 +46,6 @@ async def editar_con_ia(
     except Exception as e:
         error_detalles = traceback.format_exc()
         print("ERROR INTERNO:", error_detalles)
-        # Devolvemos el detalle exacto en el JSON para verlo directo en la app o consola
         return JSONResponse(
             status_code=500,
             content={"error": str(e), "detalles": error_detalles}
