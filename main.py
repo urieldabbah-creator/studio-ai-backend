@@ -35,9 +35,9 @@ async def editar_con_ia(
             mime_type=file.content_type or "image/jpeg"
         )
         
-        # Usamos el modelo recomendado por la API en los logs
+        # Usamos gemini-1.5-flash por su alta estabilidad y disponibilidad
         response = client.models.generate_content(
-            model='gemini-3.6-flash',
+            model='gemini-1.5-flash',
             contents=[prompt, imagen_parte],
         )
         
