@@ -5,6 +5,8 @@ from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.genai.errors import ServerError
 
 app = FastAPI()
 
@@ -22,6 +24,19 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 def read_root():
     return {"status": "Backend de Studio AI activo"}
 
+# Reintenta automáticamente hasta 3 veces si el servidor da error 503 (alta demanda)
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type(ServerError)
+)
+def llamar_gemini(prompt, imagen_parte):
+    return client.models.generate_content(
+        model='gemini-3.6-flash',
+        contents=[prompt, imagen_parte],
+    )
+
 @app.post("/editar-con-ia-real/")
 async def editar_con_ia(
     file: UploadFile = File(...),
@@ -30,17 +45,13 @@ async def editar_con_ia(
     try:
         imagen_bytes = await file.read()
         
-        # Usamos el modelo exigido por la API de Google
-        response = client.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=[
-                prompt,
-                types.Part.from_bytes(
-                    data=imagen_bytes,
-                    mime_type=file.content_type or "image/jpeg"
-                )
-            ]
+        imagen_parte = types.Part.from_bytes(
+            data=imagen_bytes,
+            mime_type=file.content_type or "image/jpeg"
         )
+        
+        # Llamada protegida con reintentos automáticos
+        response = llamar_gemini(prompt, imagen_parte)
         
         return Response(content=imagen_bytes, media_type="image/jpeg")
 
