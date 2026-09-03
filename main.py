@@ -36,16 +36,16 @@ async def editar_con_ia(
                 types.Part.from_bytes(data=image_bytes, mime_type=file.content_type or "image/jpeg")
             )
 
-        # Usamos generate_content con soporte de salida en imagen para cumplir con el SDK actual
+        # Usamos el modelo con soporte nativo de imagen
         response = client.models.generate_content(
-            model='gemini-2.5-flash', # o tu modelo configurado para imagen
+            model='gemini-2.5-flash-image',
             contents=contents,
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE", "TEXT"]
             )
         )
         
-        # Buscamos la parte de la imagen binaria en la respuesta
+        # Extraemos la imagen binaria resultante
         if response.candidates and response.candidates[0].content.parts:
             for part in response.candidates[0].content.parts:
                 if part.inline_data and part.inline_data.data:
