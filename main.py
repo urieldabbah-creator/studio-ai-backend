@@ -14,9 +14,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Nuevo token integrado
 HF_TOKEN = "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"
-API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+# Cambiamos al modelo FLUX.1-schnell, que es mucho más estable en la API gratuita
+API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
 
 @app.get("/")
 def read_root():
@@ -34,11 +34,10 @@ async def editar_con_ia(
         async with httpx.AsyncClient(timeout=90.0) as client:
             response = await client.post(API_URL, headers=headers, json=payload)
             
-            # Si el modelo se está cargando por primera vez en la nube de Hugging Face
             if response.status_code == 503:
                 return JSONResponse(
                     status_code=503,
-                    content={"error_mensaje": "El modelo de IA se está iniciando en los servidores de Hugging Face. Por favor, intenta de nuevo en unos segundos."}
+                    content={"error_mensaje": "El modelo se está cargando en los servidores. Vuelve a intentar en 10 segundos."}
                 )
 
             if response.status_code == 200:
@@ -48,12 +47,12 @@ async def editar_con_ia(
                 else:
                     return JSONResponse(
                         status_code=400,
-                        content={"error_mensaje": f"Respuesta inesperada de la API: {response.text}"}
+                        content={"error_mensaje": f"Respuesta de la API: {response.text}"}
                     )
             else:
                 return JSONResponse(
                     status_code=response.status_code,
-                    content={"error_mensaje": f"Error de la API externa: {response.text}"}
+                    content={"error_mensaje": f"Error externo: {response.text}"}
                 )
 
     except Exception as e:
