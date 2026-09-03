@@ -1,4 +1,5 @@
 import os
+import base64
 from fastapi import FastAPI, Form, UploadFile, File
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,24 +28,34 @@ async def editar_con_ia(
     prompt: str = Form(...)
 ):
     try:
-        # Generamos una imagen real utilizando Imagen 3 de Google
-        result = client.models.generate_images(
-            model='imagen-3.0-generate-002',
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                output_mime_type="image/jpeg",
-                aspect_ratio="1:1",
+        contents = [prompt]
+        
+        if file:
+            image_bytes = await file.read()
+            contents.append(
+                types.Part.from_bytes(data=image_bytes, mime_type=file.content_type or "image/jpeg")
+            )
+
+        # Usamos generate_content con soporte de salida en imagen para cumplir con el SDK actual
+        response = client.models.generate_content(
+            model='gemini-2.5-flash', # o tu modelo configurado para imagen
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE", "TEXT"]
             )
         )
         
-        if result.generated_images:
-            image_bytes = result.generated_images[0].image.image_bytes
-            return Response(content=image_bytes, media_type="image/jpeg")
+        # Buscamos la parte de la imagen binaria en la respuesta
+        if response.candidates and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if part.inline_data and part.inline_data.data:
+                    raw_data = part.inline_data.data
+                    image_data = base64.b64decode(raw_data) if isinstance(raw_data, str) else raw_data
+                    return Response(content=image_data, media_type="image/jpeg")
         
         return JSONResponse(
             status_code=400,
-            content={"error": "No se pudo generar la imagen con el modelo."}
+            content={"error": "El modelo no devolvió una imagen en esta respuesta."}
         )
 
     except Exception as e:
