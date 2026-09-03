@@ -14,12 +14,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-HF_TOKEN = "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"
+# Nuevo token integrado
+HF_TOKEN = "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"
 API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
 
 @app.get("/")
 def read_root():
-    return {"status": "Backend de Studio AI con Hugging Face activo"}
+    return {"status": "Backend de Studio AI activo"}
 
 @app.post("/editar-con-ia-real/")
 async def editar_con_ia(
@@ -33,7 +34,7 @@ async def editar_con_ia(
         async with httpx.AsyncClient(timeout=90.0) as client:
             response = await client.post(API_URL, headers=headers, json=payload)
             
-            # Si Hugging Face devuelve error 503, el modelo se está cargando en la nube
+            # Si el modelo se está cargando por primera vez en la nube de Hugging Face
             if response.status_code == 503:
                 return JSONResponse(
                     status_code=503,
@@ -42,7 +43,6 @@ async def editar_con_ia(
 
             if response.status_code == 200:
                 content_type = response.headers.get("content-type", "")
-                # Verificamos que sea una imagen binaria y no un JSON de error de la API
                 if "image" in content_type:
                     return Response(content=response.content, media_type="image/jpeg")
                 else:
