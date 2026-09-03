@@ -1,5 +1,6 @@
 import os
 import httpx
+import traceback
 from fastapi import FastAPI, Form, UploadFile, File
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +16,6 @@ app.add_middleware(
 )
 
 HF_TOKEN = "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"
-# Cambiamos al modelo FLUX.1-schnell, que es mucho más estable en la API gratuita
 API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
 
 @app.get("/")
@@ -34,29 +34,19 @@ async def editar_con_ia(
         async with httpx.AsyncClient(timeout=90.0) as client:
             response = await client.post(API_URL, headers=headers, json=payload)
             
-            if response.status_code == 503:
-                return JSONResponse(
-                    status_code=503,
-                    content={"error_mensaje": "El modelo se está cargando en los servidores. Vuelve a intentar en 10 segundos."}
-                )
-
-            if response.status_code == 200:
-                content_type = response.headers.get("content-type", "")
-                if "image" in content_type:
-                    return Response(content=response.content, media_type="image/jpeg")
-                else:
-                    return JSONResponse(
-                        status_code=400,
-                        content={"error_mensaje": f"Respuesta de la API: {response.text}"}
-                    )
-            else:
-                return JSONResponse(
-                    status_code=response.status_code,
-                    content={"error_mensaje": f"Error externo: {response.text}"}
-                )
+            # Devolvemos el estatus y el texto exacto que responde Hugging Face para verlo en la app
+            return JSONResponse(
+                status_code=200, # Lo mandamos como 200 para que tu app Flutter pueda leer el JSON de error sin crashear
+                content={
+                    "hf_status": response.status_code,
+                    "hf_response": response.text
+                }
+            )
 
     except Exception as e:
+        # Si hay un error interno de Python, lo devolvemos como texto explicativo
+        error_detalles = traceback.format_exc()
         return JSONResponse(
-            status_code=500,
-            content={"error_mensaje": str(e)}
+            status_code=200,
+            content={"error_python": str(e), "traceback": error_detalles}
         )
