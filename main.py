@@ -1,10 +1,8 @@
 import os
-import base64
+import httpx
 from fastapi import FastAPI, Form, UploadFile, File
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from google import genai
-from google.genai import types
 
 app = FastAPI()
 
@@ -16,11 +14,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# Token integrado directamente
+HF_TOKEN = "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"
+API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
 
 @app.get("/")
 def read_root():
-    return {"status": "Backend de Studio AI activo"}
+    return {"status": "Backend de Studio AI con Hugging Face activo"}
 
 @app.post("/editar-con-ia-real/")
 async def editar_con_ia(
@@ -28,35 +28,22 @@ async def editar_con_ia(
     prompt: str = Form(...)
 ):
     try:
-        contents = [prompt]
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
         
-        if file:
-            image_bytes = await file.read()
-            contents.append(
-                types.Part.from_bytes(data=image_bytes, mime_type=file.content_type or "image/jpeg")
-            )
+        payload = {
+            "inputs": prompt,
+        }
 
-        # Usamos el modelo con soporte nativo de imagen
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE", "TEXT"]
-            )
-        )
-        
-        # Extraemos la imagen binaria resultante
-        if response.candidates and response.candidates[0].content.parts:
-            for part in response.candidates[0].content.parts:
-                if part.inline_data and part.inline_data.data:
-                    raw_data = part.inline_data.data
-                    image_data = base64.b64decode(raw_data) if isinstance(raw_data, str) else raw_data
-                    return Response(content=image_data, media_type="image/jpeg")
-        
-        return JSONResponse(
-            status_code=400,
-            content={"error": "El modelo no devolvió una imagen en esta respuesta."}
-        )
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(API_URL, headers=headers, json=payload)
+            
+            if response.status_code == 200:
+                return Response(content=response.content, media_type="image/jpeg")
+            else:
+                return JSONResponse(
+                    status_code=response.status_code,
+                    content={"error": f"Error en la API externa: {response.text}"}
+                )
 
     except Exception as e:
         return JSONResponse(
