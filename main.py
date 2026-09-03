@@ -1,12 +1,9 @@
 import os
-import traceback
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.responses import Response, JSONResponse
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from google import genai
 from google.genai import types
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from google.genai.errors import ServerError
 
 app = FastAPI()
 
@@ -20,56 +17,34 @@ app.add_middleware(
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
+
 @app.get("/")
 def read_root():
-    return {"status": "Backend de Studio AI activo"}
+  return {"status": "Backend de Studio AI activo"}
 
-@retry(
-    reraise=True,
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=2, min=2, max=15),
-    retry=retry_if_exception_type(ServerError)
-)
-def llamar_gemini(prompt, imagen_parte):
-    return client.models.generate_content(
-        model='gemini-3.6-flash',
-        contents=[
-            prompt + ". Describe detalladamente los cambios realizados en la imagen.",
-            imagen_parte
-        ]
-    )
 
 @app.post("/editar-con-ia-real/")
-async def editar_con_ia(
-    file: UploadFile = File(...),
-    prompt: str = Form(...)
-):
-    try:
-        imagen_bytes = await file.read()
-        
-        imagen_parte = types.Part.from_bytes(
-            data=imagen_bytes,
-            mime_type=file.content_type or "image/jpeg"
-        )
-        
-        response = llamar_gemini(prompt, imagen_parte)
-        
-        # Obtenemos la respuesta de texto de la IA
-        texto_ia = response.text if response.text else "Modificación procesada por la IA."
-        
-        # Devolvemos un JSON limpio con la respuesta textual para que Flutter no falle al decodificar imagen
-        return JSONResponse(
-            status_code=200,
-            content={"mensaje": texto_ia}
-        )
+async def editar_con_ia(file: UploadFile = File(...), prompt: str = Form(...)):
+  try:
+    # Genera una nueva imagen real basada en el prompt del usuario utilizando Imagen
+    result = client.models.generate_images(
+        model="imagen-3.0-generate-002",
+        prompt=prompt,
+        config=types.GenerateImagesConfig(
+            number_of_images=1,
+            output_mime_type="image/jpeg",
+            aspect_ratio="1:1",
+        ),
+    )
 
-    except Exception as e:
-        error_detalles = traceback.format_exc()
-        print("ERROR INTERNO:", error_detalles)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error_mensaje": str(e),
-                "traza_completa": error_detalles
-            }
-        )
+    if result.generated_images:
+      image_bytes = result.generated_images[0].image.image_bytes
+      return Response(content=image_bytes, media_type="image/jpeg")
+
+    return JSONResponse(
+        status_code=400,
+        content={"error": "El modelo no pudo generar la imagen."},
+    )
+
+  except Exception as e:
+    return JSONResponse(status_code=500, content={"error_mensaje": str(e)})
